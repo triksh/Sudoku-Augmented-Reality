@@ -1,36 +1,27 @@
-#include "opencv2/imgproc/imgproc.hpp"
-#include "opencv2/highgui/highgui.hpp"
-#include <iostream>
-#include <stdlib.h>
-#include <stdio.h>
-#include <algorithm>
-#include <math.h>
+#include "header.h"
 
-#include <opencv2/opencv.hpp>
-#include <opencv2/core/core.hpp>
-
-using namespace cv;
-
-#define FILE_NAME "F:\\sudoku1.jpg"     // path of the image
+#define FILE_NAME "F:\\sudoku1.jpg"
 
 int main() {
 	Mat imgIn,imgG,imgP,imgB,temp;
 	Mat element = getStructuringElement( MORPH_RECT, Size(3,3), Point(-1,-1) );
 
-
-	// /* Image pre-processing */ 
+	namedWindow("Input",CV_WINDOW_AUTOSIZE);
+	namedWindow("temp",CV_WINDOW_AUTOSIZE);
+	namedWindow("output",CV_WINDOW_AUTOSIZE);
 
 		//load the image
 	imgIn = imread(FILE_NAME);
 	cvtColor(imgIn,imgG,CV_BGR2GRAY);
-		
+
+	// /* Image pre-processing */ 		
 		// remove the noise
 	GaussianBlur(imgG, imgP, Size(11,11), 0);
 	//medianBlur(imgP,imgP,3);
 
 		// Binarization of image
 	adaptiveThreshold(imgP,imgB,255,CV_ADAPTIVE_THRESH_GAUSSIAN_C,THRESH_BINARY_INV,5,2);
-	dilate( imgB, imgB, element );
+	dilate( imgB, imgB, element);
 
 
 	// /*  Grid Detection */
@@ -93,37 +84,54 @@ int main() {
 			rectP[1].y = pr[3].second; 
 		}
 
-		len = pow(rectP[0].x - rectP[4].x,2)+pow(rectP[0].y - rectP[4].y,2);
+		len = (int)pow(rectP[0].x - rectP[4].x,2)+(int)pow(rectP[0].y - rectP[4].y,2);
 		int tempL;
 		for(int i=0;i<3;++i) {
-			tempL = pow(rectP[i].x - rectP[i+1].x,2)+pow(rectP[i].y - rectP[i+1].y,2);
+			tempL = (int)pow(rectP[i].x - rectP[i+1].x,2)+(int)pow(rectP[i].y - rectP[i+1].y,2);
 			if(tempL>len) len = tempL;
 		}
-		len =std::sqrt(len);	
+		len =(int)std::sqrt(len);	
 	}
 	
 		// perspective transformation	
 	Point2f rectPF[4],rectPI[4];
 	rectPF[0].x=0; rectPF[0].y=0;
-	rectPF[1].x=len-1; rectPF[1].y=0;
-	rectPF[2].x=len-1; rectPF[2].y=len-1;
-	rectPF[3].x=0; rectPF[3].y=len-1;
+	rectPF[1].x=float(len-1); rectPF[1].y=0;
+	rectPF[2].x=float(len-1); rectPF[2].y=float(len-1);
+	rectPF[3].x=0; rectPF[3].y=float(len-1);
 
 	for(int i=0;i<4;++i){
-		rectPI[i].x = rectP[i].x;
-		rectPI[i].y = rectP[i].y;
+		rectPI[i].x = (float)rectP[i].x;
+		rectPI[i].y = (float)rectP[i].y;
 	}
 
 	Mat imgU = Mat(Size(len, len), CV_8UC1);
 	warpPerspective(imgG, imgU, getPerspectiveTransform(rectPI, rectPF), Size(len, len));
 
-	namedWindow("Input",CV_WINDOW_AUTOSIZE);
-	imshow("Input",imgIn);
 
-	namedWindow("output",CV_WINDOW_AUTOSIZE);
-	imshow("output",imgU);
+	// /* Extracting digits from grid */
+	Mat gridIn;
+	adaptiveThreshold(imgU,gridIn,255,CV_ADAPTIVE_THRESH_MEAN_C,THRESH_BINARY_INV,101,1);
+
+	imshow("output",imgIn);
+	imshow("temp",imgU);
+	
+	int lenC = len/9,idc,idr=0;
+	for(int i=0;i<9;++i) {
+		idc = 0;
+		for(int j=0;j<9;++j) {
+			Mat gridC = gridIn(Range(idr,idr+lenC),Range(idc,idc+lenC)),gridO;
+			gridO = gridO.zeros(gridC.rows,gridC.cols,CV_8UC1);	
+			knnPrePos(gridC,gridO);
+			gridO.reshape(1,1);
+
+				imshow("Input",gridO);
+				waitKey(0);
+			idc += lenC;
+		}
+		idr += lenC;
+	}
+
 	waitKey(0);
-
 	return 0;
 }
-
