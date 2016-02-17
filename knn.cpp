@@ -1,7 +1,53 @@
+
 #include "header.h"
+#include<conio.h>
 
+void createInputVec(Mat_<float> features,Mat_<int> labels) {  
+	 Mat img;  
+	 char file[255];  
+	 for (int j = 0; j < 9; j++)  {  
+		  sprintf(file, "%s%d.jpg", PATH, j+1);  
+		  img = imread(file, 1);  
+		  if (!img.data)  {  
+			std::cout << "File " << file << " not found\n";
+			exit(1);  
+		  }  
+		  cvtColor(img,img,CV_BGR2GRAY);
+//		  img = trainPrePos(img); 
+		  img = img.reshape(1,1);
+		  for(int i=0;i<SX*SY;++i) {
+				features.at<float>(j,i)=float(img.at<uchar>(0,i));
+			}
+			labels.at<int>(0,j)=j+1;	
+	 }  
+} 
 
-int knnPrePos(Mat img,Mat tempI) {
+Mat trainPrePos(Mat img)  
+{   
+//	GaussianBlur(img, img, Size(5, 5), 2, 2);  
+	adaptiveThreshold(img, img, 255, CV_ADAPTIVE_THRESH_MEAN_C, CV_THRESH_BINARY, 11, 2);  
+
+	 std::vector<std::vector<Point> >contours;  
+	 Mat contourImage,out;  
+	 img.copyTo(contourImage);  
+	 findContours(contourImage, contours, CV_RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);  
+  
+	 int idx = 0;  
+	 int area = 0;  
+	 for (int i = 0; i < contours.size(); i++)  {  
+		  if (area < contours[i].size() )  {  
+			   idx = i;  
+			   area = contours[i].size();  
+		  }  
+	 }  
+  
+	 Rect rec = boundingRect(contours[idx]);  
+  
+	 resize(img(rec),out, Size(SX, SY));  
+	 return out;  
+}
+
+int knnPrePos(Mat img,Mat &tempI) {
 		// removing the edges
 	for(int i=0;i<img.size().height;++i) {
 		floodFill(img,Point(0,i),Scalar(0,0,0));
@@ -9,7 +55,6 @@ int knnPrePos(Mat img,Mat tempI) {
 		floodFill(img,Point(i,0),Scalar(0,0,0));
 		floodFill(img,Point(i,img.size().height-1),Scalar(0,0,0));
 	}
-
 		// determining the bounding rect
 	std::vector<std::vector<Point> > contours;
 	Rect rect;
@@ -19,31 +64,19 @@ int knnPrePos(Mat img,Mat tempI) {
 	if(contours.size() == 0)		// blank cell 
 		return 0;
 
-	int idx=0; double area=0,tempA;
-	for(int i=0; i<contours.size(); ++i)
-	{
-		tempA=contourArea(contours[i]);
-		if(tempA>area) {
-			area=tempA;
-			idx=i;
-		}
-	}
-	rect = boundingRect(contours[idx]);
+	 int idx = 0;  
+	 int area = 0;  
+	 for (int i = 0; i < contours.size(); i++)  {  
+		  if (area < contours[i].size() )  {  
+			   idx = i;  
+			   area = contours[i].size();  
+		  }  
+	 }  
 
-		// centering the image
-	int colLeft=rect.x,colRight=rect.x+rect.width;
-	int rowBottom=rect.y+rect.height,rowTop=rect.y;
-    int startAtX = (tempI.cols/2)-(colRight-colLeft)/2;
-    int startAtY = (tempI.rows/2)-(rowBottom-rowTop)/2;
-    for(int y=startAtY;y<(tempI.rows/2)+(rowBottom-rowTop)/2;y++)
-    {
-        uchar *ptr = tempI.ptr<uchar>(y);
-        for(int x=startAtX;x<(tempI.cols/2)+(colRight-colLeft)/2;x++)
-        {
-            ptr[x] = img.at<uchar>(rowTop+(y-startAtY),colLeft+(x-startAtX));
-        }
-    }
+	rect = boundingRect(contours[idx]);
+	img(rect).copyTo(tempI);
+	resize(tempI,tempI, Size(SX, SY));  
+	bitwise_not(tempI,tempI);
 
 	return 1;
 }
-  
