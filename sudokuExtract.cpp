@@ -1,20 +1,20 @@
 #include "header.h"
 
-#define FILE_NAME "F:\\sudoku1.jpg"
+
 
 int main() {
 	Mat imgIn,imgG,imgP,imgB,temp;
 	Mat element = getStructuringElement( MORPH_RECT, Size(3,3), Point(-1,-1) );
 
 	namedWindow("Input",CV_WINDOW_AUTOSIZE);
-	namedWindow("temp",CV_WINDOW_AUTOSIZE);
-	namedWindow("output",CV_WINDOW_AUTOSIZE);
+	namedWindow("output1",CV_WINDOW_AUTOSIZE);
+	namedWindow("output2",CV_WINDOW_AUTOSIZE);
 
 		//load the image
 	imgIn = imread(FILE_NAME);
 	cvtColor(imgIn,imgG,CV_BGR2GRAY);
 
-	// /* Image pre-processing */ 		
+	// /* Image pre-processing 		
 		// remove the noise
 	GaussianBlur(imgG, imgP, Size(11,11), 0);
 	//medianBlur(imgP,imgP,3);
@@ -24,7 +24,7 @@ int main() {
 	dilate( imgB, imgB, element);
 
 
-	// /*  Grid Detection */
+	// /*  Grid Detection 
 	
 		//contour detection
 	std::vector<Point> rectP; 
@@ -109,29 +109,89 @@ int main() {
 	warpPerspective(imgG, imgU, getPerspectiveTransform(rectPI, rectPF), Size(len, len));
 
 
-	// /* Extracting digits from grid */
-	Mat gridIn;
-	adaptiveThreshold(imgU,gridIn,255,CV_ADAPTIVE_THRESH_MEAN_C,THRESH_BINARY_INV,101,1);
+	// /* Extracting digits from grid 
 
-	imshow("output",imgIn);
-	imshow("temp",imgU);
+		// training the classifier
+	Mat_<float> featureVector(9,SX*SY);
+	Mat_<int> labelVector(1,9);
+
+	createInputVec(featureVector,labelVector);
 	
+	Ptr<ml::KNearest>  knn(ml::KNearest::create());
+	knn->train(featureVector, ml::ROW_SAMPLE, labelVector);		// training complete
+
+		// recognition
+	Mat imgT;
+	adaptiveThreshold(imgU, imgT, 255, CV_ADAPTIVE_THRESH_MEAN_C, CV_THRESH_BINARY_INV, 101, 1);  	
+
 	int lenC = len/9,idc,idr=0;
+	int sudoku[9][9];
 	for(int i=0;i<9;++i) {
 		idc = 0;
 		for(int j=0;j<9;++j) {
-			Mat gridC = gridIn(Range(idr,idr+lenC),Range(idc,idc+lenC)),gridO;
-			gridO = gridO.zeros(gridC.rows,gridC.cols,CV_8UC1);	
-			knnPrePos(gridC,gridO);
-			gridO.reshape(1,1);
+			Mat gridC = imgT(Range(idr,idr+lenC),Range(idc,idc+lenC)),gridO;
+			if(! knnPrePos(gridC,gridO)) {
+				sudoku[i][j]=0;
+			} else {
+				/*
+					char path[255];
+					sprintf(path,"%s%d%d.jpg",PATH,i,j);
+					imshow("input",gridO);
+					imwrite(path,gridO);
+						waitKey(0);
+				*/
 
-				imshow("Input",gridO);
-				waitKey(0);
+				gridO = gridO.reshape(1,1);
+				Mat_<float> test(1,SX*SY);
+				for(int ii=0;ii<SX*SY;++ii) {
+					test.at<float>(0,ii)=float(gridO.at<uchar>(0,ii));
+				}	
+				sudoku[i][j]= (int)knn->findNearest(test, 1, noArray());				
+			}
+
 			idc += lenC;
 		}
 		idr += lenC;
 	}
 
+
+			// Display 
+	Mat imgU2 = Mat(Size(len, len), CV_8UC3);
+	warpPerspective(imgIn, imgU2, getPerspectiveTransform(rectPI, rectPF), Size(len, len));
+
+	for(int i=0;i<9;++i) {
+		for(int j=0;j<9;++j) {
+			std::cout << sudoku[i][j]<< " ";
+			if(sudoku[i][j] !=0) 
+				continue;
+			char str[5];
+			sprintf(str,"%d",sudoku[i][j]);
+			putText(imgU2, str, Point(j*lenC+lenC/3,(i+1)*lenC-lenC/5), FONT_HERSHEY_SIMPLEX, 0.7, Scalar::all(0), 2,8);
+			putText(imgU, str, Point(j*lenC+lenC/3,(i+1)*lenC-lenC/5), FONT_HERSHEY_SIMPLEX, 0.7, Scalar::all(0), 2,8);
+		}
+		std::cout<<"\n";
+	}
+	Mat mask = Mat::zeros(imgIn.rows,imgIn.cols,CV_8UC1);
+	fillConvexPoly(mask, &rectP[0], rectP.size(), 255, 8, 0); 
+
+	len *= 2;
+	Mat imgUU;// = Mat(imgIn.size(),CV_8UC3);
+	warpPerspective(imgU2, imgUU, getPerspectiveTransform(rectPF, rectPI), imgIn.size());
+
+	Mat out;
+	imgIn.copyTo(out);
+	imgUU.copyTo(out,mask);
+
+imshow("output1",imgU);
+imshow("output2",out);
+imshow("Input",imgIn);
+
+
+
+	imwrite(PATH"output1.jpg",imgU);
+	imwrite(PATH"output2.jpg",out);
+
 	waitKey(0);
 	return 0;
 }
+
