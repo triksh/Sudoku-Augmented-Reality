@@ -187,9 +187,10 @@ imshow("output2",out);
 imshow("Input",imgIn);
 
 
-
+/*
 	imwrite(PATH"output1.jpg",imgU);
 	imwrite(PATH"output2.jpg",out);
+*/
 
 	waitKey(0);
 	return 0;
