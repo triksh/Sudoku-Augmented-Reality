@@ -5,20 +5,23 @@
 void createInputVec(Mat_<float> features,Mat_<int> labels) {  
 	 Mat img;  
 	 char file[255];  
+	 int l=0;
 	 for (int j = 0; j < 9; j++)  {  
-		  sprintf(file, "%s%d.jpg", PATH, j+1);  
-		  img = imread(file, 1);  
-		  if (!img.data)  {  
-			std::cout << "File " << file << " not found\n";
-			exit(1);  
-		  }  
-		  cvtColor(img,img,CV_BGR2GRAY);
-//		  img = trainPrePos(img); 
-		  img = img.reshape(1,1);
-		  for(int i=0;i<SX*SY;++i) {
-				features.at<float>(j,i)=float(img.at<uchar>(0,i));
-			}
-			labels.at<int>(0,j)=j+1;	
+		 for(int k=0;k<2;++k) {
+			  sprintf(file, "%s%d_%d.jpg", PATH, j+1,k);  
+			  img = imread(file, 1);  
+			  if (!img.data)  {  
+				std::cout << "File " << file << " not found\n";
+				continue;  
+			  }  
+			  cvtColor(img,img,CV_BGR2GRAY);
+	//		  img = trainPrePos(img); 
+			  img = img.reshape(1,1);
+			  for(int i=0;i<SX*SY;++i) {
+					features.at<float>(l,i)=float(img.at<uchar>(0,i));
+				}
+				labels.at<int>(0,l++)=j+1;	
+		 }
 	 }  
 } 
 
