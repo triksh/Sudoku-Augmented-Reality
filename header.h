@@ -23,3 +23,4 @@ using namespace cv;
 void createInputVec(Mat_<float>,Mat_<int>);		// convert training images to vectors
 Mat trainPrePos(Mat);		// apply some preprocessing to img before feeding then to knn
 int knnPrePos(Mat,Mat&);	// for testing data
+bool SolveSudoku(int grid[9][9]);	// solve the sudoku puzzle
