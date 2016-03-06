@@ -112,8 +112,8 @@ int main() {
 	// /* Extracting digits from grid 
 
 		// training the classifier
-	Mat_<float> featureVector(9,SX*SY);
-	Mat_<int> labelVector(1,9);
+	Mat_<float> featureVector(18,SX*SY);
+	Mat_<int> labelVector(1,18);
 
 	createInputVec(featureVector,labelVector);
 	
@@ -133,13 +133,13 @@ int main() {
 			if(! knnPrePos(gridC,gridO)) {
 				sudoku[i][j]=0;
 			} else {
-				/*
-					char path[255];
-					sprintf(path,"%s%d%d.jpg",PATH,i,j);
-					imshow("input",gridO);
-					imwrite(path,gridO);
-						waitKey(0);
-				*/
+				
+				//	char path[255];
+				//	sprintf(path,"%s%d%d.jpg",PATH,i,j);
+				//	imshow("input",gridO);
+				//	imwrite(path,gridO);
+				//		waitKey(0);
+				
 
 				gridO = gridO.reshape(1,1);
 				Mat_<float> test(1,SX*SY);
@@ -154,6 +154,25 @@ int main() {
 		idr += lenC;
 	}
 
+//	sudoku[5][2]=6;
+			// solve the sudoku
+	int sudokuOut[9][9];
+	for(int i=0;i<9;++i)
+		for(int j=0;j<9;++j)
+			sudokuOut[i][j]=sudoku[i][j];
+
+	if(SolveSudoku(sudokuOut)) {
+		std::cout<<"solved\n";
+	} else {
+		std::cout<<"Incorrect result (Take a clear image)\n";
+	}
+	for(int i=0;i<9;++i) {
+		for(int j=0;j<9;++j) {
+			std::cout << sudokuOut[i][j]<< " ";
+		}
+		std::cout<<"\n";
+	}
+
 
 			// Display 
 	Mat imgU2 = Mat(Size(len, len), CV_8UC3);
@@ -161,15 +180,13 @@ int main() {
 
 	for(int i=0;i<9;++i) {
 		for(int j=0;j<9;++j) {
-			std::cout << sudoku[i][j]<< " ";
 			if(sudoku[i][j] !=0) 
 				continue;
 			char str[5];
-			sprintf(str,"%d",sudoku[i][j]);
-			putText(imgU2, str, Point(j*lenC+lenC/3,(i+1)*lenC-lenC/5), FONT_HERSHEY_SIMPLEX, 0.7, Scalar::all(0), 2,8);
-			putText(imgU, str, Point(j*lenC+lenC/3,(i+1)*lenC-lenC/5), FONT_HERSHEY_SIMPLEX, 0.7, Scalar::all(0), 2,8);
+			sprintf(str,"%d",sudokuOut[i][j]);
+			putText(imgU2, str, Point(j*lenC+lenC/3,(i+1)*lenC-lenC/5), FONT_HERSHEY_SIMPLEX, 0.7, Scalar::all(5), 2,8);
+			putText(imgU, str, Point(j*lenC+lenC/3,(i+1)*lenC-lenC/5), FONT_HERSHEY_SIMPLEX, 0.7, Scalar::all(5), 2,8);
 		}
-		std::cout<<"\n";
 	}
 	Mat mask = Mat::zeros(imgIn.rows,imgIn.cols,CV_8UC1);
 	fillConvexPoly(mask, &rectP[0], rectP.size(), 255, 8, 0); 
@@ -187,10 +204,9 @@ imshow("output2",out);
 imshow("Input",imgIn);
 
 
-/*
+
 	imwrite(PATH"output1.jpg",imgU);
 	imwrite(PATH"output2.jpg",out);
-*/
 
 	waitKey(0);
 	return 0;
